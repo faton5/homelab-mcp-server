@@ -1,0 +1,55 @@
+# =============================================================
+#  🏠  HOMELAB MCP SERVER
+#
+#  ✏️  Remplissez les 4 valeurs marquées ci-dessous,
+#  puis lancez :  docker compose up -d
+#
+#  L'image est téléchargée automatiquement depuis GitHub.
+# =============================================================
+
+services:
+  infra-manager-mcp:
+    image: ghcr.io/faton5/homelab-mcp-server:latest
+    container_name: infra-manager-mcp
+    restart: unless-stopped
+    ports:
+      - "10850:10850"      # Port d'accès MCP — changez si nécessaire
+    environment:
+
+      # ┌─────────────────────────────────────────────────────┐
+      # │              CONFIGURATION PROXMOX                  │
+      # │  Créez un token : Proxmox → Datacenter → API Tokens │
+      # └─────────────────────────────────────────────────────┘
+
+      # ✏️  1/4  IP ou hostname de votre serveur Proxmox
+      - PROXMOX_HOST=192.168.1.10
+
+      # ✏️  2/4  Port Proxmox (8006 par défaut, ne pas changer)
+      - PROXMOX_PORT=8006
+
+      # ✏️  3/4  Token ID  —  format : utilisateur@realm!nom_du_token
+      - PROXMOX_TOKEN_ID=root@pam!mcp
+
+      # ✏️  4/4  Secret du token  (affiché une seule fois à la création)
+      - PROXMOX_TOKEN_SECRET=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+      # ─── Ne pas modifier ce qui suit ──────────────────────
+      - PROXMOX_VERIFY_SSL=false
+      - PROXMOX_TIMEOUT=30
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=10850
+      - MCP_NAME=infra-manager
+      - SSH_ENABLED=true
+      - SSH_DEFAULT_USER=root
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+
+    volumes:
+      - ./logs:/var/log
+    networks:
+      - infra-network
+
+networks:
+  infra-network:
+    driver: bridge
