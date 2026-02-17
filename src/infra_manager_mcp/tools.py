@@ -103,7 +103,11 @@ def register_tools(server: Server) -> None:
                         "server_name": {
                             "type": "string",
                             "description": "Nom du serveur à arrêter",
-                        }
+                        },
+                        "confirmed": {
+                            "type": "boolean",
+                            "description": "Mettre à true pour confirmer et exécuter l'arrêt",
+                        },
                     },
                     "required": ["server_name"],
                 },
@@ -117,7 +121,11 @@ def register_tools(server: Server) -> None:
                         "server_name": {
                             "type": "string",
                             "description": "Nom du serveur à redémarrer",
-                        }
+                        },
+                        "confirmed": {
+                            "type": "boolean",
+                            "description": "Mettre à true pour confirmer et exécuter le redémarrage",
+                        },
                     },
                     "required": ["server_name"],
                 },
@@ -479,11 +487,13 @@ def register_tools(server: Server) -> None:
 
             elif name == "stop_vm":
                 server_name = arguments["server_name"]
-                return await handle_stop_vm(proxmox, config, permissions, server_name)
+                confirmed = arguments.get("confirmed", False)
+                return await handle_stop_vm(proxmox, config, permissions, server_name, confirmed)
 
             elif name == "restart_vm":
                 server_name = arguments["server_name"]
-                return await handle_restart_vm(proxmox, config, permissions, server_name)
+                confirmed = arguments.get("confirmed", False)
+                return await handle_restart_vm(proxmox, config, permissions, server_name, confirmed)
 
             elif name == "execute_command":
                 server_name = arguments["server_name"]
@@ -727,7 +737,7 @@ async def handle_start_vm(
 
 
 async def handle_stop_vm(
-    proxmox: ProxmoxClient, config, permissions: PermissionChecker, server_name: str
+    proxmox: ProxmoxClient, config, permissions: PermissionChecker, server_name: str, confirmed: bool = False
 ) -> list[TextContent]:
     """Arrête une VM - NÉCESSITE CONFIRMATION"""
     try:
@@ -735,19 +745,24 @@ async def handle_stop_vm(
         if not allowed:
             return [TextContent(type="text", text=error)]
 
-        return [
-            TextContent(
-                type="text",
-                text=f"⚠️ CONFIRMATION REQUISE: Voulez-vous vraiment arrêter le serveur '{server_name}' ? "
-                f"Cette action va éteindre la VM. Veuillez confirmer avant que j'exécute cette action.",
-            )
-        ]
+        if not confirmed:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"⚠️ CONFIRMATION REQUISE: Voulez-vous vraiment arrêter le serveur '{server_name}' ? "
+                    f"Cette action va éteindre la VM. Appelez à nouveau avec confirmed=true pour exécuter.",
+                )
+            ]
+
+        server = find_vm_by_name(proxmox, config, server_name)
+        result = proxmox.stop_vm(server["node"], server["vmid"])
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
 
 async def handle_restart_vm(
-    proxmox: ProxmoxClient, config, permissions: PermissionChecker, server_name: str
+    proxmox: ProxmoxClient, config, permissions: PermissionChecker, server_name: str, confirmed: bool = False
 ) -> list[TextContent]:
     """Redémarre une VM - NÉCESSITE CONFIRMATION"""
     try:
@@ -755,13 +770,18 @@ async def handle_restart_vm(
         if not allowed:
             return [TextContent(type="text", text=error)]
 
-        return [
-            TextContent(
-                type="text",
-                text=f"⚠️ CONFIRMATION REQUISE: Voulez-vous vraiment redémarrer le serveur '{server_name}' ? "
-                f"Cette action va redémarrer la VM. Veuillez confirmer avant que j'exécute cette action.",
-            )
-        ]
+        if not confirmed:
+            return [
+                TextContent(
+                    type="text",
+                    text=f"⚠️ CONFIRMATION REQUISE: Voulez-vous vraiment redémarrer le serveur '{server_name}' ? "
+                    f"Cette action va redémarrer la VM. Appelez à nouveau avec confirmed=true pour exécuter.",
+                )
+            ]
+
+        server = find_vm_by_name(proxmox, config, server_name)
+        result = proxmox.restart_vm(server["node"], server["vmid"])
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
     except Exception as e:
         return [TextContent(type="text", text=f"Error: {str(e)}")]
 
