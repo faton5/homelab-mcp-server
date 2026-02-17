@@ -4,6 +4,7 @@ Main MCP Server for Infrastructure Manager
 
 import asyncio
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -60,14 +61,59 @@ async def main():
             except Exception as e:
                 logger.warning(f"Failed to setup file logging: {e}")
 
-        # Démarrer le serveur via stdio
-        logger.info("Starting MCP server via stdio...")
-        async with stdio_server() as (read_stream, write_stream):
-            await server.run(
-                read_stream,
-                write_stream,
-                server.create_initialization_options(),
+        # Choisir le mode de transport (stdio ou SSE)
+        transport_mode = os.getenv("MCP_TRANSPORT", "stdio").lower()
+
+        if transport_mode == "sse":
+            # Mode SSE pour accès distant
+            from mcp.server.sse import SseServerTransport
+            from starlette.applications import Starlette
+            from starlette.routing import Route
+            import uvicorn
+
+            logger.info("Starting MCP server in SSE mode...")
+
+            sse = SseServerTransport("/messages")
+
+            async def handle_sse(request):
+                async with sse.connect_sse(
+                    request.scope, request.receive, request._send
+                ) as streams:
+                    await server.run(
+                        streams[0], streams[1], server.create_initialization_options()
+                    )
+
+            async def handle_messages(request):
+                await sse.handle_post_message(request.scope, request.receive, request._send)
+
+            # Créer l'application Starlette
+            app = Starlette(
+                routes=[
+                    Route("/sse", endpoint=handle_sse),
+                    Route("/messages", endpoint=handle_messages, methods=["POST"]),
+                ]
             )
+
+            # Lancer le serveur HTTP
+            host = os.getenv("MCP_HOST", "0.0.0.0")
+            port = int(os.getenv("MCP_PORT", "8000"))
+            logger.info(f"SSE server listening on {host}:{port}")
+
+            config_uvicorn = uvicorn.Config(
+                app, host=host, port=port, log_level="info"
+            )
+            server_uvicorn = uvicorn.Server(config_uvicorn)
+            await server_uvicorn.serve()
+
+        else:
+            # Mode stdio pour usage local
+            logger.info("Starting MCP server in stdio mode...")
+            async with stdio_server() as (read_stream, write_stream):
+                await server.run(
+                    read_stream,
+                    write_stream,
+                    server.create_initialization_options(),
+                )
 
     except FileNotFoundError as e:
         logger.error(f"Configuration file not found: {e}")

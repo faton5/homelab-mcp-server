@@ -377,3 +377,530 @@ class ProxmoxClient:
         except Exception as e:
             logger.warning(f"Failed to get IP addresses for VM {vmid}: {e}")
             return []
+
+    # ===== GESTION AVANCÉE DES VMs =====
+
+    def create_vm(self, node: str, vmid: int, name: str, **config) -> Dict[str, Any]:
+        """
+        Crée une nouvelle VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la nouvelle VM
+            name: Nom de la VM
+            **config: Configuration de la VM (memory, cores, sockets, etc.)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {"vmid": vmid, "name": name, **config}
+            result = api.nodes(node).qemu.post(**params)
+            logger.info(f"Created VM {vmid} ({name}) on node {node}")
+            return {"success": True, "vmid": vmid, "action": "create", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to create VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "create", "error": str(e)}
+
+    def clone_vm(self, node: str, vmid: int, newid: int, name: str, full: bool = True) -> Dict[str, Any]:
+        """
+        Clone une VM existante
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM source
+            newid: ID de la nouvelle VM
+            name: Nom de la nouvelle VM
+            full: Full clone (true) ou linked clone (false)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {"newid": newid, "name": name, "full": 1 if full else 0}
+            result = api.nodes(node).qemu(vmid).clone.post(**params)
+            logger.info(f"Cloned VM {vmid} to {newid} ({name}) on node {node}")
+            return {"success": True, "vmid": newid, "action": "clone", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to clone VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "clone", "error": str(e)}
+
+    def delete_vm(self, node: str, vmid: int, purge: bool = False) -> Dict[str, Any]:
+        """
+        Supprime une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            purge: Supprimer aussi les disques
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {}
+            if purge:
+                params["purge"] = 1
+            result = api.nodes(node).qemu(vmid).delete(**params)
+            logger.info(f"Deleted VM {vmid} on node {node}")
+            return {"success": True, "vmid": vmid, "action": "delete", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to delete VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "delete", "error": str(e)}
+
+    def modify_vm_config(self, node: str, vmid: int, **config) -> Dict[str, Any]:
+        """
+        Modifie la configuration d'une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            **config: Paramètres à modifier (memory, cores, sockets, etc.)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            result = api.nodes(node).qemu(vmid).config.put(**config)
+            logger.info(f"Modified config for VM {vmid}: {config}")
+            return {"success": True, "vmid": vmid, "action": "modify_config", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to modify VM {vmid} config: {e}")
+            return {"success": False, "vmid": vmid, "action": "modify_config", "error": str(e)}
+
+    # ===== SNAPSHOTS =====
+
+    def create_snapshot(self, node: str, vmid: int, snapname: str, description: str = "") -> Dict[str, Any]:
+        """
+        Crée un snapshot d'une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            snapname: Nom du snapshot
+            description: Description du snapshot
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {"snapname": snapname}
+            if description:
+                params["description"] = description
+            result = api.nodes(node).qemu(vmid).snapshot.post(**params)
+            logger.info(f"Created snapshot '{snapname}' for VM {vmid}")
+            return {"success": True, "vmid": vmid, "snapshot": snapname, "action": "create_snapshot", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to create snapshot for VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "create_snapshot", "error": str(e)}
+
+    def list_snapshots(self, node: str, vmid: int) -> List[Dict[str, Any]]:
+        """
+        Liste les snapshots d'une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+
+        Returns:
+            Liste des snapshots
+        """
+        api = self.connect()
+        try:
+            snapshots = api.nodes(node).qemu(vmid).snapshot.get()
+            logger.debug(f"Found {len(snapshots)} snapshots for VM {vmid}")
+            return snapshots
+        except Exception as e:
+            logger.error(f"Failed to list snapshots for VM {vmid}: {e}")
+            return []
+
+    def restore_snapshot(self, node: str, vmid: int, snapname: str) -> Dict[str, Any]:
+        """
+        Restaure un snapshot
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            snapname: Nom du snapshot
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            result = api.nodes(node).qemu(vmid).snapshot(snapname).rollback.post()
+            logger.info(f"Restored snapshot '{snapname}' for VM {vmid}")
+            return {"success": True, "vmid": vmid, "snapshot": snapname, "action": "restore_snapshot", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to restore snapshot '{snapname}' for VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "restore_snapshot", "error": str(e)}
+
+    def delete_snapshot(self, node: str, vmid: int, snapname: str) -> Dict[str, Any]:
+        """
+        Supprime un snapshot
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            snapname: Nom du snapshot
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            result = api.nodes(node).qemu(vmid).snapshot(snapname).delete()
+            logger.info(f"Deleted snapshot '{snapname}' for VM {vmid}")
+            return {"success": True, "vmid": vmid, "snapshot": snapname, "action": "delete_snapshot", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to delete snapshot '{snapname}' for VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "delete_snapshot", "error": str(e)}
+
+    # ===== BACKUPS =====
+
+    def list_backups(self, node: str) -> List[Dict[str, Any]]:
+        """
+        Liste les backups disponibles sur un node
+
+        Args:
+            node: Nom du node
+
+        Returns:
+            Liste des backups
+        """
+        api = self.connect()
+        try:
+            # Lister tous les storages du node
+            storages = api.nodes(node).storage.get()
+            all_backups = []
+
+            for storage in storages:
+                storage_name = storage.get("storage")
+                storage_type = storage.get("type")
+
+                # Seuls certains types de storage supportent les backups
+                if storage_type in ["dir", "nfs", "cifs", "pbs"]:
+                    try:
+                        backups = api.nodes(node).storage(storage_name).content.get(content="backup")
+                        for backup in backups:
+                            backup["storage"] = storage_name
+                        all_backups.extend(backups)
+                    except Exception:
+                        # Storage ne contient pas de backups ou erreur d'accès
+                        pass
+
+            logger.debug(f"Found {len(all_backups)} backups on node {node}")
+            return all_backups
+        except Exception as e:
+            logger.error(f"Failed to list backups on node {node}: {e}")
+            return []
+
+    def create_backup(self, node: str, vmid: int, storage: str, mode: str = "snapshot", compress: str = "zstd") -> Dict[str, Any]:
+        """
+        Crée un backup d'une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            storage: Storage où sauvegarder
+            mode: Mode de backup (snapshot, suspend, stop)
+            compress: Compression (0, 1, gzip, lzo, zstd)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {
+                "vmid": vmid,
+                "storage": storage,
+                "mode": mode,
+                "compress": compress
+            }
+            result = api.nodes(node).vzdump.post(**params)
+            logger.info(f"Created backup for VM {vmid} to storage {storage}")
+            return {"success": True, "vmid": vmid, "action": "create_backup", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to create backup for VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "create_backup", "error": str(e)}
+
+    def restore_backup(self, node: str, vmid: int, archive: str, storage: str) -> Dict[str, Any]:
+        """
+        Restaure un backup
+
+        Args:
+            node: Nom du node
+            vmid: Nouvel ID pour la VM restaurée
+            archive: Nom du fichier de backup
+            storage: Storage où restaurer
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {
+                "vmid": vmid,
+                "archive": archive,
+                "storage": storage
+            }
+            result = api.nodes(node).qemu.post(**params)
+            logger.info(f"Restored backup {archive} to VM {vmid}")
+            return {"success": True, "vmid": vmid, "action": "restore_backup", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to restore backup {archive}: {e}")
+            return {"success": False, "action": "restore_backup", "error": str(e)}
+
+    # ===== STORAGE =====
+
+    def list_storage(self, node: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Liste les storages disponibles
+
+        Args:
+            node: Nom du node (optionnel)
+
+        Returns:
+            Liste des storages avec leur usage
+        """
+        api = self.connect()
+        try:
+            if node:
+                nodes_to_check = [{"node": node}]
+            else:
+                nodes_to_check = self.list_nodes()
+
+            all_storages = []
+            for n in nodes_to_check:
+                node_name = n["node"]
+                try:
+                    storages = api.nodes(node_name).storage.get()
+                    for storage in storages:
+                        storage["node"] = node_name
+                    all_storages.extend(storages)
+                except Exception as e:
+                    logger.warning(f"Failed to list storage on node {node_name}: {e}")
+
+            logger.debug(f"Found {len(all_storages)} storages")
+            return all_storages
+        except Exception as e:
+            logger.error(f"Failed to list storages: {e}")
+            return []
+
+    # ===== DISQUES =====
+
+    def add_disk(self, node: str, vmid: int, disk_id: str, size: str, storage: str) -> Dict[str, Any]:
+        """
+        Ajoute un disque à une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            disk_id: ID du disque (virtio0, scsi0, etc.)
+            size: Taille du disque (ex: "50G")
+            storage: Storage où créer le disque
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            config = {disk_id: f"{storage}:{size}"}
+            result = api.nodes(node).qemu(vmid).config.put(**config)
+            logger.info(f"Added disk {disk_id} ({size}) to VM {vmid}")
+            return {"success": True, "vmid": vmid, "action": "add_disk", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to add disk to VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "add_disk", "error": str(e)}
+
+    def remove_disk(self, node: str, vmid: int, disk_id: str) -> Dict[str, Any]:
+        """
+        Retire un disque d'une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            disk_id: ID du disque (virtio0, scsi0, etc.)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            config = {"delete": disk_id}
+            result = api.nodes(node).qemu(vmid).config.put(**config)
+            logger.info(f"Removed disk {disk_id} from VM {vmid}")
+            return {"success": True, "vmid": vmid, "action": "remove_disk", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to remove disk from VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "remove_disk", "error": str(e)}
+
+    def resize_disk(self, node: str, vmid: int, disk_id: str, size: str) -> Dict[str, Any]:
+        """
+        Redimensionne un disque
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            disk_id: ID du disque (virtio0, scsi0, etc.)
+            size: Taille à ajouter (ex: "+10G")
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            result = api.nodes(node).qemu(vmid).resize.put(disk=disk_id, size=size)
+            logger.info(f"Resized disk {disk_id} on VM {vmid} by {size}")
+            return {"success": True, "vmid": vmid, "action": "resize_disk", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to resize disk on VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "resize_disk", "error": str(e)}
+
+    # ===== MIGRATION =====
+
+    def migrate_vm(self, node: str, vmid: int, target: str, online: bool = True) -> Dict[str, Any]:
+        """
+        Migre une VM vers un autre node
+
+        Args:
+            node: Node source
+            vmid: ID de la VM
+            target: Node de destination
+            online: Migration à chaud (true) ou à froid (false)
+
+        Returns:
+            Résultat de l'opération
+        """
+        api = self.connect()
+        try:
+            params = {"target": target, "online": 1 if online else 0}
+            result = api.nodes(node).qemu(vmid).migrate.post(**params)
+            logger.info(f"Migrated VM {vmid} from {node} to {target}")
+            return {"success": True, "vmid": vmid, "action": "migrate", "result": result}
+        except Exception as e:
+            logger.error(f"Failed to migrate VM {vmid}: {e}")
+            return {"success": False, "vmid": vmid, "action": "migrate", "error": str(e)}
+
+    # ===== SERVICES =====
+
+    def manage_service(self, node: str, vmid: int, service_name: str, action: str) -> Dict[str, Any]:
+        """
+        Gère un service systemd sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            service_name: Nom du service
+            action: Action (start, stop, restart, enable, disable, status)
+
+        Returns:
+            Résultat de l'opération
+        """
+        valid_actions = ["start", "stop", "restart", "enable", "disable", "status"]
+        if action not in valid_actions:
+            return {"success": False, "error": f"Invalid action. Must be one of: {valid_actions}"}
+
+        command = f"systemctl {action} {service_name}"
+        result = self.execute_command(node, vmid, command)
+        return result
+
+    def list_services(self, node: str, vmid: int) -> Dict[str, Any]:
+        """
+        Liste les services systemd sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+
+        Returns:
+            Liste des services
+        """
+        command = "systemctl list-units --type=service --all --no-pager"
+        result = self.execute_command(node, vmid, command)
+        return result
+
+    # ===== FILES =====
+
+    def read_file(self, node: str, vmid: int, file_path: str, lines: int = None) -> Dict[str, Any]:
+        """
+        Lit le contenu d'un fichier sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            file_path: Chemin du fichier
+            lines: Nombre de lignes à lire (optionnel)
+
+        Returns:
+            Contenu du fichier
+        """
+        if lines:
+            command = f"head -n {lines} {file_path}"
+        else:
+            command = f"cat {file_path}"
+
+        result = self.execute_command(node, vmid, command)
+        return result
+
+    def write_file(self, node: str, vmid: int, file_path: str, content: str) -> Dict[str, Any]:
+        """
+        Écrit du contenu dans un fichier sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            file_path: Chemin du fichier
+            content: Contenu à écrire
+
+        Returns:
+            Résultat de l'opération
+        """
+        # Échapper les quotes dans le contenu
+        escaped_content = content.replace("'", "'\\''")
+        command = f"echo '{escaped_content}' > {file_path}"
+        result = self.execute_command(node, vmid, command)
+        return result
+
+    # ===== PROCESSES =====
+
+    def list_processes(self, node: str, vmid: int) -> Dict[str, Any]:
+        """
+        Liste les processus sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+
+        Returns:
+            Liste des processus
+        """
+        command = "ps aux --sort=-%mem | head -20"
+        result = self.execute_command(node, vmid, command)
+        return result
+
+    def kill_process(self, node: str, vmid: int, pid: int, signal: str = "TERM") -> Dict[str, Any]:
+        """
+        Tue un processus sur une VM
+
+        Args:
+            node: Nom du node
+            vmid: ID de la VM
+            pid: ID du processus
+            signal: Signal à envoyer (TERM, KILL, etc.)
+
+        Returns:
+            Résultat de l'opération
+        """
+        valid_signals = ["TERM", "KILL", "HUP", "INT", "QUIT"]
+        if signal not in valid_signals:
+            return {"success": False, "error": f"Invalid signal. Must be one of: {valid_signals}"}
+
+        command = f"kill -{signal} {pid}"
+        result = self.execute_command(node, vmid, command)
+        return result

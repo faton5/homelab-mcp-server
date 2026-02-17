@@ -187,6 +187,272 @@ def register_tools(server: Server) -> None:
                     "required": ["server_name"],
                 },
             ),
+            # === GESTION AVANCÉE DES VMs ===
+            Tool(
+                name="create_vm",
+                description="Créer une nouvelle VM (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "node": {"type": "string", "description": "Node Proxmox"},
+                        "vmid": {"type": "integer", "description": "ID de la nouvelle VM"},
+                        "name": {"type": "string", "description": "Nom de la VM"},
+                        "memory": {"type": "integer", "description": "RAM en MB (optionnel)"},
+                        "cores": {"type": "integer", "description": "Nombre de CPU cores (optionnel)"},
+                    },
+                    "required": ["node", "vmid", "name"],
+                },
+            ),
+            Tool(
+                name="clone_vm",
+                description="Cloner une VM existante",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM source"},
+                        "new_vmid": {"type": "integer", "description": "ID de la nouvelle VM"},
+                        "new_name": {"type": "string", "description": "Nom de la nouvelle VM"},
+                        "full": {"type": "boolean", "description": "Full clone (true) ou linked (false)"},
+                    },
+                    "required": ["server_name", "new_vmid", "new_name"],
+                },
+            ),
+            Tool(
+                name="delete_vm",
+                description="Supprimer une VM (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM à supprimer"},
+                        "purge": {"type": "boolean", "description": "Supprimer aussi les disques"},
+                    },
+                    "required": ["server_name"],
+                },
+            ),
+            Tool(
+                name="modify_vm_config",
+                description="Modifier la configuration d'une VM (RAM, CPU, etc.)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "memory": {"type": "integer", "description": "RAM en MB (optionnel)"},
+                        "cores": {"type": "integer", "description": "Nombre de cores (optionnel)"},
+                    },
+                    "required": ["server_name"],
+                },
+            ),
+            # === SNAPSHOTS ===
+            Tool(
+                name="create_snapshot",
+                description="Créer un snapshot d'une VM",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "snapname": {"type": "string", "description": "Nom du snapshot"},
+                        "description": {"type": "string", "description": "Description (optionnel)"},
+                    },
+                    "required": ["server_name", "snapname"],
+                },
+            ),
+            Tool(
+                name="list_snapshots",
+                description="Lister les snapshots d'une VM",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                    },
+                    "required": ["server_name"],
+                },
+            ),
+            Tool(
+                name="restore_snapshot",
+                description="Restaurer un snapshot (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "snapname": {"type": "string", "description": "Nom du snapshot"},
+                    },
+                    "required": ["server_name", "snapname"],
+                },
+            ),
+            Tool(
+                name="delete_snapshot",
+                description="Supprimer un snapshot",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "snapname": {"type": "string", "description": "Nom du snapshot"},
+                    },
+                    "required": ["server_name", "snapname"],
+                },
+            ),
+            # === STORAGE & BACKUPS ===
+            Tool(
+                name="list_storage",
+                description="Lister les storages Proxmox et leur usage",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "node": {"type": "string", "description": "Node Proxmox (optionnel)"},
+                    },
+                },
+            ),
+            Tool(
+                name="list_backups",
+                description="Lister les backups disponibles sur un node",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "node": {"type": "string", "description": "Node Proxmox"},
+                    },
+                    "required": ["node"],
+                },
+            ),
+            Tool(
+                name="create_backup",
+                description="Créer un backup d'une VM",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "storage": {"type": "string", "description": "Storage où sauvegarder"},
+                        "mode": {"type": "string", "description": "Mode (snapshot/suspend/stop)"},
+                    },
+                    "required": ["server_name", "storage"],
+                },
+            ),
+            # === DISQUES ===
+            Tool(
+                name="add_disk",
+                description="Ajouter un disque à une VM",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "disk_id": {"type": "string", "description": "ID du disque (virtio0, scsi0, etc.)"},
+                        "size": {"type": "string", "description": "Taille (ex: 50G)"},
+                        "storage": {"type": "string", "description": "Storage"},
+                    },
+                    "required": ["server_name", "disk_id", "size", "storage"],
+                },
+            ),
+            Tool(
+                name="remove_disk",
+                description="Retirer un disque d'une VM (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "disk_id": {"type": "string", "description": "ID du disque"},
+                    },
+                    "required": ["server_name", "disk_id"],
+                },
+            ),
+            Tool(
+                name="resize_disk",
+                description="Redimensionner un disque d'une VM",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "disk_id": {"type": "string", "description": "ID du disque"},
+                        "size": {"type": "string", "description": "Taille à ajouter (ex: +10G)"},
+                    },
+                    "required": ["server_name", "disk_id", "size"],
+                },
+            ),
+            Tool(
+                name="migrate_vm",
+                description="Migrer une VM vers un autre node (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom de la VM"},
+                        "target_node": {"type": "string", "description": "Node de destination"},
+                        "online": {"type": "boolean", "description": "Migration à chaud"},
+                    },
+                    "required": ["server_name", "target_node"],
+                },
+            ),
+            # === SERVICES & FICHIERS ===
+            Tool(
+                name="manage_service",
+                description="Gérer un service systemd (start/stop/restart/enable/disable)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                        "service_name": {"type": "string", "description": "Nom du service"},
+                        "action": {"type": "string", "description": "Action (start/stop/restart/enable/disable/status)"},
+                    },
+                    "required": ["server_name", "service_name", "action"],
+                },
+            ),
+            Tool(
+                name="list_services",
+                description="Lister tous les services systemd",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                    },
+                    "required": ["server_name"],
+                },
+            ),
+            Tool(
+                name="read_file",
+                description="Lire le contenu d'un fichier",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                        "file_path": {"type": "string", "description": "Chemin du fichier"},
+                    },
+                    "required": ["server_name", "file_path"],
+                },
+            ),
+            Tool(
+                name="write_file",
+                description="Écrire dans un fichier (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                        "file_path": {"type": "string", "description": "Chemin du fichier"},
+                        "content": {"type": "string", "description": "Contenu à écrire"},
+                    },
+                    "required": ["server_name", "file_path", "content"],
+                },
+            ),
+            Tool(
+                name="list_processes",
+                description="Lister les processus sur un serveur",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                    },
+                    "required": ["server_name"],
+                },
+            ),
+            Tool(
+                name="kill_process",
+                description="Tuer un processus (NÉCESSITE CONFIRMATION)",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "server_name": {"type": "string", "description": "Nom du serveur"},
+                        "pid": {"type": "integer", "description": "PID du processus"},
+                        "signal": {"type": "string", "description": "Signal (TERM/KILL)"},
+                    },
+                    "required": ["server_name", "pid"],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -238,6 +504,75 @@ def register_tools(server: Server) -> None:
             elif name == "install_updates":
                 server_name = arguments["server_name"]
                 return await handle_install_updates(executor, server_name)
+
+            # === GESTION AVANCÉE VMs ===
+            elif name == "create_vm":
+                return await handle_create_vm(proxmox, permissions, arguments)
+
+            elif name == "clone_vm":
+                return await handle_clone_vm(proxmox, config, arguments)
+
+            elif name == "delete_vm":
+                return await handle_delete_vm(proxmox, config, permissions, arguments)
+
+            elif name == "modify_vm_config":
+                return await handle_modify_vm_config(proxmox, config, arguments)
+
+            # === SNAPSHOTS ===
+            elif name == "create_snapshot":
+                return await handle_create_snapshot(proxmox, config, arguments)
+
+            elif name == "list_snapshots":
+                return await handle_list_snapshots(proxmox, config, arguments["server_name"])
+
+            elif name == "restore_snapshot":
+                return await handle_restore_snapshot(proxmox, config, permissions, arguments)
+
+            elif name == "delete_snapshot":
+                return await handle_delete_snapshot(proxmox, config, arguments)
+
+            # === STORAGE & BACKUPS ===
+            elif name == "list_storage":
+                node = arguments.get("node")
+                return await handle_list_storage(proxmox, node)
+
+            elif name == "list_backups":
+                return await handle_list_backups(proxmox, arguments["node"])
+
+            elif name == "create_backup":
+                return await handle_create_backup(proxmox, config, arguments)
+
+            # === DISQUES ===
+            elif name == "add_disk":
+                return await handle_add_disk(proxmox, config, arguments)
+
+            elif name == "remove_disk":
+                return await handle_remove_disk(proxmox, config, permissions, arguments)
+
+            elif name == "resize_disk":
+                return await handle_resize_disk(proxmox, config, arguments)
+
+            elif name == "migrate_vm":
+                return await handle_migrate_vm(proxmox, config, permissions, arguments)
+
+            # === SERVICES & FICHIERS ===
+            elif name == "manage_service":
+                return await handle_manage_service(executor, arguments)
+
+            elif name == "list_services":
+                return await handle_list_services(executor, arguments["server_name"])
+
+            elif name == "read_file":
+                return await handle_read_file(executor, arguments)
+
+            elif name == "write_file":
+                return await handle_write_file(executor, permissions, arguments)
+
+            elif name == "list_processes":
+                return await handle_list_processes(executor, arguments["server_name"])
+
+            elif name == "kill_process":
+                return await handle_kill_process(executor, permissions, arguments)
 
             else:
                 return [TextContent(type="text", text=f"Unknown tool: {name}")]
@@ -574,3 +909,252 @@ async def handle_install_updates(executor: CommandExecutor, server_name: str) ->
             f"Veuillez confirmer avant que j'exécute cette action.",
         )
     ]
+
+
+# ===== HANDLERS AVANCÉS =====
+
+async def handle_create_vm(proxmox: ProxmoxClient, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Crée une VM - NÉCESSITE CONFIRMATION"""
+    try:
+        allowed, error = permissions.check_operation_permission("vm_control")
+        if not allowed:
+            return [TextContent(type="text", text=error)]
+
+        return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Créer une nouvelle VM {args['name']} (ID: {args['vmid']}) sur {args['node']} ?")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_clone_vm(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Clone une VM"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.clone_vm(server["node"], server["vmid"], args["new_vmid"], args["new_name"], args.get("full", True))
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_delete_vm(proxmox: ProxmoxClient, config, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Supprime une VM - NÉCESSITE CONFIRMATION"""
+    try:
+        allowed, error = permissions.check_operation_permission("vm_control")
+        if not allowed:
+            return [TextContent(type="text", text=error)]
+
+        return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Supprimer définitivement la VM '{args['server_name']}' ?")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_modify_vm_config(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Modifie la config d'une VM"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        config_params = {k: v for k, v in args.items() if k not in ["server_name"] and v is not None}
+        result = proxmox.modify_vm_config(server["node"], server["vmid"], **config_params)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_create_snapshot(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Crée un snapshot"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.create_snapshot(server["node"], server["vmid"], args["snapname"], args.get("description", ""))
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_list_snapshots(proxmox: ProxmoxClient, config, server_name: str) -> list[TextContent]:
+    """Liste les snapshots"""
+    try:
+        server = find_vm_by_name(proxmox, config, server_name)
+        if not server:
+            return [TextContent(type="text", text=f"VM '{server_name}' not found")]
+
+        snapshots = proxmox.list_snapshots(server["node"], server["vmid"])
+        return [TextContent(type="text", text=json.dumps(snapshots, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_restore_snapshot(proxmox: ProxmoxClient, config, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Restaure un snapshot - NÉCESSITE CONFIRMATION"""
+    try:
+        allowed, error = permissions.check_operation_permission("vm_control")
+        if not allowed:
+            return [TextContent(type="text", text=error)]
+
+        return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Restaurer le snapshot '{args['snapname']}' sur '{args['server_name']}' ?")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_delete_snapshot(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Supprime un snapshot"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.delete_snapshot(server["node"], server["vmid"], args["snapname"])
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_list_storage(proxmox: ProxmoxClient, node: Optional[str]) -> list[TextContent]:
+    """Liste les storages"""
+    try:
+        storages = proxmox.list_storage(node)
+        return [TextContent(type="text", text=json.dumps(storages, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_list_backups(proxmox: ProxmoxClient, node: str) -> list[TextContent]:
+    """Liste les backups"""
+    try:
+        backups = proxmox.list_backups(node)
+        return [TextContent(type="text", text=json.dumps(backups, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_create_backup(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Crée un backup"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.create_backup(server["node"], server["vmid"], args["storage"], args.get("mode", "snapshot"))
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_add_disk(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Ajoute un disque"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.add_disk(server["node"], server["vmid"], args["disk_id"], args["size"], args["storage"])
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_remove_disk(proxmox: ProxmoxClient, config, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Retire un disque - NÉCESSITE CONFIRMATION"""
+    try:
+        allowed, error = permissions.check_operation_permission("vm_control")
+        if not allowed:
+            return [TextContent(type="text", text=error)]
+
+        return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Retirer le disque '{args['disk_id']}' de '{args['server_name']}' ?")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_resize_disk(proxmox: ProxmoxClient, config, args: dict) -> list[TextContent]:
+    """Redimensionne un disque"""
+    try:
+        server = find_vm_by_name(proxmox, config, args["server_name"])
+        if not server:
+            return [TextContent(type="text", text=f"VM '{args['server_name']}' not found")]
+
+        result = proxmox.resize_disk(server["node"], server["vmid"], args["disk_id"], args["size"])
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_migrate_vm(proxmox: ProxmoxClient, config, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Migre une VM - NÉCESSITE CONFIRMATION"""
+    try:
+        allowed, error = permissions.check_operation_permission("vm_control")
+        if not allowed:
+            return [TextContent(type="text", text=error)]
+
+        return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Migrer '{args['server_name']}' vers {args['target_node']} ?")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_manage_service(executor: CommandExecutor, args: dict) -> list[TextContent]:
+    """Gère un service systemd"""
+    try:
+        action = args["action"]
+        service = args["service_name"]
+        cmd = f"systemctl {action} {service}"
+        result = executor.execute(args["server_name"], cmd, sudo=True)
+
+        if result["success"]:
+            return [TextContent(type="text", text=f"✅ Service {service} {action}: {result.get('stdout', 'OK')}")]
+        else:
+            return [TextContent(type="text", text=f"❌ Error: {result.get('error', 'Unknown')}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_list_services(executor: CommandExecutor, server_name: str) -> list[TextContent]:
+    """Liste les services"""
+    try:
+        result = executor.execute(server_name, "systemctl list-units --type=service --all", sudo=False)
+        if result["success"]:
+            return [TextContent(type="text", text=result.get("stdout", ""))]
+        else:
+            return [TextContent(type="text", text=f"Error: {result.get('error', 'Unknown')}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_read_file(executor: CommandExecutor, args: dict) -> list[TextContent]:
+    """Lit un fichier"""
+    try:
+        cmd = f"cat {args['file_path']}"
+        result = executor.execute(args["server_name"], cmd, sudo=False)
+
+        if result["success"]:
+            return [TextContent(type="text", text=result.get("stdout", ""))]
+        else:
+            return [TextContent(type="text", text=f"Error: {result.get('error', 'Unknown')}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_write_file(executor: CommandExecutor, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Écrit dans un fichier - NÉCESSITE CONFIRMATION"""
+    return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Écrire dans '{args['file_path']}' sur '{args['server_name']}' ?")]
+
+
+async def handle_list_processes(executor: CommandExecutor, server_name: str) -> list[TextContent]:
+    """Liste les processus"""
+    try:
+        result = executor.execute(server_name, "ps aux", sudo=False)
+        if result["success"]:
+            return [TextContent(type="text", text=result.get("stdout", ""))]
+        else:
+            return [TextContent(type="text", text=f"Error: {result.get('error', 'Unknown')}")]
+    except Exception as e:
+        return [TextContent(type="text", text=f"Error: {str(e)}")]
+
+
+async def handle_kill_process(executor: CommandExecutor, permissions: PermissionChecker, args: dict) -> list[TextContent]:
+    """Tue un processus - NÉCESSITE CONFIRMATION"""
+    return [TextContent(type="text", text=f"⚠️ CONFIRMATION REQUISE: Tuer le processus PID {args['pid']} sur '{args['server_name']}' ?")]

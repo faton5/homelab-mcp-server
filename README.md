@@ -67,12 +67,102 @@ environment:
 docker compose up -d
 ```
 
-### 4. Configure Claude Desktop
+### 4. Configure your Claude client
 
-Add the MCP server to your Claude Desktop configuration:
+The MCP server supports two connection modes:
+- **Local (stdio)**: For Claude Desktop running on the same machine as the Docker container
+- **Remote (SSE)**: For Claude Desktop on another machine, Claude Code, Codeium, or other MCP clients
 
-**macOS/Linux**: `~/.config/claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+#### Option A: Remote Access (Recommended for remote servers)
+
+If your MCP server runs on a remote server (e.g., in your Proxmox VM), use **SSE mode**:
+
+**1. Configure docker-compose.yml for SSE:**
+
+```yaml
+environment:
+  - MCP_TRANSPORT=sse
+  - MCP_HOST=0.0.0.0
+  - MCP_PORT=8000
+
+ports:
+  - "8000:8000"
+```
+
+**2. Configure your client:**
+
+<details>
+<summary><b>Claude Desktop</b></summary>
+
+Edit your config file:
+- **macOS/Linux**: `~/.config/claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "homelab": {
+      "url": "http://YOUR_SERVER_IP:8000/sse"
+    }
+  }
+}
+```
+
+Replace `YOUR_SERVER_IP` with your Docker host IP (e.g., `192.168.1.50`).
+</details>
+
+<details>
+<summary><b>Claude Code (CLI)</b></summary>
+
+```bash
+# Add to your Claude Code config
+claude-code mcp add homelab http://YOUR_SERVER_IP:8000/sse
+```
+</details>
+
+<details>
+<summary><b>Codeium</b></summary>
+
+Add to Codeium settings:
+
+```json
+{
+  "mcp.servers": {
+    "homelab": {
+      "url": "http://YOUR_SERVER_IP:8000/sse"
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Other MCP clients (Gemini, Continue.dev, etc.)</b></summary>
+
+Use the SSE endpoint URL:
+```
+http://YOUR_SERVER_IP:8000/sse
+```
+
+Configure according to your client's MCP server settings.
+</details>
+
+#### Option B: Local Access (stdio mode)
+
+If Claude Desktop runs on the same machine as Docker:
+
+**1. Configure docker-compose.yml:**
+
+```yaml
+environment:
+  - MCP_TRANSPORT=stdio  # or remove this line (stdio is default)
+```
+
+**2. Configure Claude Desktop:**
+
+Edit your config file:
+- **macOS/Linux**: `~/.config/claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
 ```json
 {
@@ -92,9 +182,11 @@ Add the MCP server to your Claude Desktop configuration:
 }
 ```
 
-### 5. Restart Claude Desktop
+### 5. Restart your client
 
-Press **Ctrl+R** (or **Cmd+R** on macOS) to reload the MCP servers.
+- **Claude Desktop**: Press **Ctrl+R** (or **Cmd+R** on macOS)
+- **Claude Code**: Restart the CLI
+- **Codeium/Others**: Reload the MCP configuration
 
 ## 🎯 Usage Examples
 

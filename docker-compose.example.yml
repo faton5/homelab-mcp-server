@@ -43,6 +43,17 @@ services:
       - LOG_LEVEL=INFO
       - PYTHONUNBUFFERED=1
 
+      # MCP Transport Mode (stdio pour local, sse pour remote)
+      # Utilisez "stdio" pour Claude Desktop sur la même machine
+      # Utilisez "sse" pour accès distant (Claude Desktop sur autre machine, Claude Code, etc.)
+      - MCP_TRANSPORT=sse
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+
+    # Ports (nécessaire uniquement en mode SSE pour accès distant)
+    ports:
+      - "8564:8564"
+
     # Réseau
     # Utilisez 'host' si vous avez besoin d'accéder à des serveurs sur le réseau local
     # network_mode: host
