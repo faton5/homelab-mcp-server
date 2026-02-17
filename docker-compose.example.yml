@@ -1,0 +1,74 @@
+services:
+  infra-manager-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: infra-manager-mcp
+    restart: unless-stopped
+    stdin_open: true  # Permet à Claude Desktop de se connecter
+    tty: true         # Alloue un pseudo-TTY
+
+    # Volumes
+    volumes:
+      # Configuration YAML (optionnelle si vous utilisez .env)
+      # - ./config.yaml:/app/config.yaml:ro
+
+      # Clés SSH (si utilisées)
+      - ./ssh_keys:/app/ssh_keys:ro
+
+      # Logs
+      - ./logs:/var/log
+
+      # Code source (pour le développement - commentez en production)
+      - ./src:/app/src
+
+    # === CONFIGURATION : MODIFIEZ ICI VOS VALEURS ===
+    environment:
+      # Proxmox (OBLIGATOIRE - Modifiez avec vos vraies valeurs)
+      - PROXMOX_HOST=YOUR_PROXMOX_IP
+      - PROXMOX_PORT=8006
+      - PROXMOX_TOKEN_ID=root@pam!YOUR_TOKEN_NAME
+      - PROXMOX_TOKEN_SECRET=YOUR_TOKEN_SECRET_HERE
+      - PROXMOX_VERIFY_SSL=false
+      - PROXMOX_TIMEOUT=30
+
+      # SSH (optionnel)
+      - SSH_ENABLED=true
+      - SSH_DEFAULT_USER=root
+      - SSH_TIMEOUT=30
+      - SSH_PORT=22
+
+      # MCP Server
+      - MCP_NAME=infra-manager
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+
+    # Réseau
+    # Utilisez 'host' si vous avez besoin d'accéder à des serveurs sur le réseau local
+    # network_mode: host
+
+    # Ou utilisez un réseau bridge personnalisé
+    networks:
+      - infra-network
+
+    # Healthcheck
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Limites de ressources (ajustez selon vos besoins)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  infra-network:
+    driver: bridge

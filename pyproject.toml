@@ -1,0 +1,68 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "infra-manager-mcp"
+version = "1.0.0"
+description = "MCP server for managing Proxmox infrastructure and Linux servers"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Edwin", email = "pytondu2100@gmail.com" }
+]
+license = { text = "MIT" }
+keywords = ["mcp", "proxmox", "infrastructure", "automation", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "proxmoxer>=2.0.0",
+    "requests>=2.31.0",
+    "paramiko>=3.4.0",
+    "pyyaml>=6.0.1",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/infra-manager-mcp"
+Repository = "https://github.com/yourusername/infra-manager-mcp"
+Issues = "https://github.com/yourusername/infra-manager-mcp/issues"
+
+[project.scripts]
+infra-manager-mcp = "infra_manager_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/infra_manager_mcp"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310", "py311", "py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
